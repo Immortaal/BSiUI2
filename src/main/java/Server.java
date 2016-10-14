@@ -87,7 +87,7 @@ public class Server {
                         // send received message to all clients
                         for (Socket s : clientsList) {
                             PrintWriter out = new PrintWriter(s.getOutputStream(), true);
-                            out.println((String) object.get("msg"));
+                            out.println(input);
                         }
                     }
                 }

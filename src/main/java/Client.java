@@ -1,3 +1,4 @@
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.json.JSONObject;
 
 import javax.swing.*;
@@ -58,8 +59,9 @@ public class Client extends JFrame implements Runnable {
         inputMessage.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = clientName + ": " +inputMessage.getText();
+                String encodeMsg = Base64.encode(msg.getBytes());
                 JSONObject object = new JSONObject();
-                object.put("msg", msg);
+                object.put("msg", encodeMsg);
                 out.println(object.toString());
                 inputMessage.setText(null);
             }
@@ -74,7 +76,9 @@ public class Client extends JFrame implements Runnable {
                 if (response == null || response.equals("")) {
                     System.exit(0);
                 }
-                messagesList.append(response + "\n");
+                JSONObject object = new JSONObject(response);
+                byte[] decodedBytes = Base64.decode(object.getString("msg"));
+                messagesList.append(new String(decodedBytes) + "\n");
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
