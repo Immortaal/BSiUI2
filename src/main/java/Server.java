@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Beata on 2016-10-12.
+ * Created by Beata Kalis on 2016-10-12.
  */
 public class Server {
 
@@ -31,9 +31,9 @@ public class Server {
         while (true) {
             try {
                 Socket client = server.accept();
-                clientsList.add(client);
+                clientsList.add(client); // add client to the list
                 System.out.println("Client connected");
-                new ServerThread(client);
+                new ServerThread(client, clientsList).start();
             } catch (IOException ex) {
                 System.out.println("I/O error" + ex);
             }
@@ -47,28 +47,34 @@ public class Server {
 
     private static class ServerThread extends Thread {
         Socket socket;
+        List<Socket> clientsList;
 
-        ServerThread(Socket s) {
+        ServerThread(Socket s,List<Socket> clientsList ) {
             this.socket = s;
+            this.clientsList = clientsList;
         }
 
         public void run() {
             try {
                 BufferedReader in = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
                 // send message to client
-                // out.println("some message");
+              //  out.println("Hello ;)");
 
                 // Get messages from the client, line by line
                 while (true) {
                     String input = in.readLine();
-                    // loop
+                    System.out.println("from client: "+input);
                     if (input == null) {
                         break;
                     }
-                    out.println(input.toUpperCase());
+                    // send received message to all clients
+                    for (Socket s : clientsList) {
+                        PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+                        out.println(input.toUpperCase());
+                    }
+
                 }
             } catch (IOException e) {
                e.printStackTrace();
