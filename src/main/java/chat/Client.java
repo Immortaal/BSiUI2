@@ -1,3 +1,5 @@
+package chat;
+
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.json.JSONObject;
 
@@ -10,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Random;
 
 /**
  * Created by Beata Kalis on 2016-10-12.
@@ -20,13 +23,19 @@ public class Client extends JFrame implements Runnable {
     private PrintWriter out;
     private JTextField inputMessage;
     private JTextArea messagesList;
-    private String clientName;
+    private final String clientName;
+    private long p; // prime number
+    private long g; // primitive root modulo n
+    private long B; // value received from server
+    private final long a; // client local secret, value from <0, 27> when g = 5
 
-    Client(String host, int port, String name) {
+    private Client(String host, int port, String name) {
         setTitle(name);
         setBounds(10, 10, 400, 400);
 
         clientName = name;
+        a = new Random().nextInt(27);
+        System.out.println("Client local secret a: " + a);
 
         try {
             Socket socket = new Socket(host, port);
@@ -58,7 +67,7 @@ public class Client extends JFrame implements Runnable {
     private void setListeners() {
         inputMessage.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                String msg = clientName + ": " +inputMessage.getText();
+                String msg = clientName + ": " + inputMessage.getText();
                 String encodeMsg = Base64.encode(msg.getBytes());
                 JSONObject object = new JSONObject();
                 object.put("msg", encodeMsg);
@@ -69,16 +78,51 @@ public class Client extends JFrame implements Runnable {
     }
 
     public void run() {
+        boolean keys = true;
+        boolean canSendA = false;
+        boolean canCalculateS = false;
+        long S; // shared secret
+        long A; // value send to server
         while (true) {
-            String response;
+            if (keys) {
+                JSONObject object = new JSONObject();
+                object.put("request", "keys");
+                out.println(object);
+                keys = false;
+            }
+            if (canSendA) {
+                A = (long) (Math.pow(g, a)) % p; // expected 19
+                System.out.println("Client A: " + A);
+                JSONObject key = new JSONObject();
+                key.put("A", A);
+                out.println(key);
+                canSendA = false; // send value A only once
+            }
+            if (canCalculateS) {
+                S = (long) (Math.pow(B, a)) % p;
+                System.out.println("Client S: " + S); // 2 expected
+                canCalculateS = false; // only once calculate value S;
+            }
             try {
-                response = in.readLine();
+                String response = in.readLine();
                 if (response == null || response.equals("")) {
                     System.exit(0);
                 }
                 JSONObject object = new JSONObject(response);
-                byte[] decodedBytes = Base64.decode(object.getString("msg"));
-                messagesList.append(new String(decodedBytes) + "\n");
+                if (object.has("msg")) {
+                    byte[] decodedBytes = Base64.decode(object.getString("msg"));
+                    messagesList.append(new String(decodedBytes) + "\n");
+                } else if (object.has("p") && object.has("g")) {
+                    p = object.getLong("p");
+                    g = object.getLong("g");
+                    System.out.println("p: " + p + ", g: " + g);
+                    canSendA = true;
+                } else if (object.has("B")) {
+                    B = object.getLong("B");
+                    System.out.println("B from server: " + B);
+                    canCalculateS = true; // can calculate value S
+                }
+
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
