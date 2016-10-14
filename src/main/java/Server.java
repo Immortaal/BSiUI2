@@ -1,3 +1,5 @@
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -46,10 +48,10 @@ public class Server {
     }
 
     private static class ServerThread extends Thread {
-        Socket socket;
-        List<Socket> clientsList;
+        private Socket socket;
+        private List<Socket> clientsList;
 
-        ServerThread(Socket s,List<Socket> clientsList ) {
+        ServerThread(Socket s, List<Socket> clientsList) {
             this.socket = s;
             this.clientsList = clientsList;
         }
@@ -60,24 +62,37 @@ public class Server {
                         new InputStreamReader(socket.getInputStream()));
 
                 // send message to client
-              //  out.println("Hello ;)");
+                //  out.println("Hello ;)");
 
                 // Get messages from the client, line by line
                 while (true) {
                     String input = in.readLine();
-                    System.out.println("from client: "+input);
+
                     if (input == null) {
                         break;
                     }
-                    // send received message to all clients
-                    for (Socket s : clientsList) {
-                        PrintWriter out = new PrintWriter(s.getOutputStream(), true);
-                        out.println(input.toUpperCase());
-                    }
 
+                    System.out.println("from client: " + input);
+                    JSONObject object = new JSONObject(input);
+
+                    if (object.has("request")) {
+
+                    } else if (object.has("a")) {
+                        Integer i = (Integer) object.get("a");
+                        System.out.println("a: " + i);
+
+                    } else if (object.has("encryption")) {
+
+                    } else if (object.has("msg")) {
+                        // send received message to all clients
+                        for (Socket s : clientsList) {
+                            PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+                            out.println((String) object.get("msg"));
+                        }
+                    }
                 }
             } catch (IOException e) {
-               e.printStackTrace();
+                e.printStackTrace();
             } finally {
                 try {
                     socket.close();

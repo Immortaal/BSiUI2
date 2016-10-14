@@ -1,3 +1,5 @@
+import org.json.JSONObject;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -55,7 +57,10 @@ public class Client extends JFrame implements Runnable {
     private void setListeners() {
         inputMessage.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                out.println(clientName + ": " +inputMessage.getText());
+                String msg = clientName + ": " +inputMessage.getText();
+                JSONObject object = new JSONObject();
+                object.put("msg", msg);
+                out.println(object.toString());
                 inputMessage.setText(null);
             }
         });
