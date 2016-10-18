@@ -24,17 +24,20 @@ public class Client extends JFrame implements Runnable {
     private JTextField inputMessage;
     private JTextArea messagesList;
     private final String clientName;
+    private String encryption;
     private long p; // prime number
     private long g; // primitive root modulo n
     private long B; // value received from server
     private final long a; // client local secret, value from <0, 27> when g = 5
+    long S; // shared secret
 
-    private Client(String host, int port, String name) {
+    private Client(String host, int port, String name, String encryption) {
         setTitle(name);
         setBounds(10, 10, 400, 400);
 
-        clientName = name;
-        a = new Random().nextInt(27);
+        this.clientName = name;
+        this.encryption = encryption;
+        this.a = new Random().nextInt(27);
         System.out.println("Client local secret a: " + a);
 
         try {
@@ -67,10 +70,14 @@ public class Client extends JFrame implements Runnable {
     private void setListeners() {
         inputMessage.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                String msg = clientName + ": " + inputMessage.getText();
-                String encodeMsg = Base64.encode(msg.getBytes());
+                String msg = inputMessage.getText();
+                byte[] encryptMsg = Encryption.caesarCipher(msg, S, true);
+                String encodeMsg = Base64.encode(encryptMsg);
+                byte[] encryptName = Encryption.caesarCipher(clientName, S, true);
+                String encodeName = Base64.encode(encryptName);
                 JSONObject object = new JSONObject();
                 object.put("msg", encodeMsg);
+                object.put("from", encodeName);
                 out.println(object.toString());
                 inputMessage.setText(null);
             }
@@ -81,7 +88,7 @@ public class Client extends JFrame implements Runnable {
         boolean keys = true;
         boolean canSendA = false;
         boolean canCalculateS = false;
-        long S; // shared secret
+        boolean canSetEncryption = false;
         long A; // value send to server
         while (true) {
             if (keys) {
@@ -100,8 +107,17 @@ public class Client extends JFrame implements Runnable {
             }
             if (canCalculateS) {
                 S = (long) (Math.pow(B, a)) % p;
-                System.out.println("Client S: " + S); // 2 expected
+                System.out.println("Client S: " + S);
                 canCalculateS = false; // only once calculate value S;
+                canSetEncryption = true;
+            }
+
+            if (canSetEncryption) {
+                // none, cezar, xor
+                JSONObject object = new JSONObject();
+                object.put("encryption", encryption);
+                out.println(object);
+                canSetEncryption = false;
             }
             try {
                 String response = in.readLine();
@@ -111,7 +127,8 @@ public class Client extends JFrame implements Runnable {
                 JSONObject object = new JSONObject(response);
                 if (object.has("msg")) {
                     byte[] decodedBytes = Base64.decode(object.getString("msg"));
-                    messagesList.append(new String(decodedBytes) + "\n");
+                    byte[] decryptedBytes = Encryption.caesarCipher(new String(decodedBytes), S, false);
+                    messagesList.append(new String(decryptedBytes) + "\n");
                 } else if (object.has("p") && object.has("g")) {
                     p = object.getLong("p");
                     g = object.getLong("g");
@@ -130,6 +147,6 @@ public class Client extends JFrame implements Runnable {
     }
 
     public static void main(String[] args) {
-        new Client(args[0], Integer.parseInt(args[1]), args[2]).run();
+        new Client(args[0], Integer.parseInt(args[1]), args[2], args[3]).run();
     }
 }
