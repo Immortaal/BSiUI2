@@ -1,34 +1,42 @@
 package chat;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Created by Beata on 2016-10-19.
+ * Created by Beata Kalis on 2016-10-19.
  */
-public class ServerThread extends Thread {
+class ServerThread extends Thread {
     private final Socket socket;
     private final List<ClientInfo> clientsList;
-    private ClientInfo clientInfo = new ClientInfo();
-    private final long p = 23; // prime number
-    private final long g = 5; // primitive root modulo n
-    private long b; // server local secret
-    private long S; // shared secret
-    private long B; // value send to client
-    private long A; // value received from client
+    private final ClientInfo clientInfo = new ClientInfo();
+    private final BigInteger p = new BigInteger("23"); // prime number
+    private final BigInteger g = new BigInteger("5"); // primitive root modulo n
+    private final BigInteger b; // server local secret, random value
+    private BigInteger S; // shared secret
+    private BigInteger B; // value send to client
+    private BigInteger A; // value received from client
+    private boolean canSendB = false;
+    private boolean canCalculateS = false;
+    private boolean canSendMessage = false;
+    private PrintWriter out;
 
     ServerThread(Socket s, List<ClientInfo> clientsList) {
         this.socket = s;
         this.clientsList = clientsList;
         this.clientInfo.setSocket(s);
-        this.b = new Random().nextInt(27);
+
+        String serverLocalSecret = "" + new Random().nextInt(1000);
+        this.b = new BigInteger(serverLocalSecret);
     }
 
     public void run() {
@@ -36,27 +44,16 @@ public class ServerThread extends Thread {
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(socket.getInputStream()));
 
-            boolean canSendB = false;
-            boolean canCalculateS = false;
-            boolean canSendMessage = false;
 
             while (true) {
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                out = new PrintWriter(socket.getOutputStream(), true);
 
                 if (canSendB) {
-                    B = (long) (Math.pow(g, b)) % p;
-                    System.out.println("Server B: " + B);
-                    JSONObject key = new JSONObject();
-                    key.put("B", B);
-                    out.println(key);
-                    canSendB = false; // only once send value B
+                    sendB();
                 }
 
                 if (canCalculateS) {
-                    S = (long) (Math.pow(A, b)) % p;
-                    clientInfo.setSecret(S);
-                    System.out.println("Server S: " + S);
-                    canCalculateS = false; // only once calculate value S;
+                    calculateS();
                 }
 
                 String input = in.readLine();
@@ -68,29 +65,17 @@ public class ServerThread extends Thread {
                 JSONObject object = new JSONObject(input);
 
                 if (object.has("request") && object.getString("request").equals("keys")) {
-                    JSONObject keys = new JSONObject();
-                    keys.put("p", p);
-                    keys.put("g", g);
-                    out.println(keys);
-                    canSendB = true; // server can send B to client
+                    sendKeys();
 
-                } else if (object.has("A")) {
-                    A = object.getLong("A");
-                    System.out.println("A from client: " + A);
+                } else if (object.has("a")) {
+                    A = object.getBigInteger("a");
                     canCalculateS = true; // can calculate value S
 
                 } else if (object.has("encryption")) {
-                    clientInfo.setEncryption(object.getString("encryption"));
-                    clientsList.add(clientInfo);
-                    canSendMessage = true;
+                    setEncryption(object);
 
                 } else if (object.has("msg") & canSendMessage) {
-                    // send received message to all clients
-                    for (int i = 0; i < clientsList.size(); i++) {
-                        Socket s = clientsList.get(i).getSocket();
-                        out = new PrintWriter(s.getOutputStream(), true);
-                        out.println(input);
-                    }
+                    sendMessages(object);
                 }
             }
         } catch (IOException e) {
@@ -103,4 +88,76 @@ public class ServerThread extends Thread {
             }
         }
     }
+
+    private void sendB() {
+        //  B = (long) (Math.pow(g, b)) % p;
+        BigInteger tmp = g.pow(b.intValue());
+        B = tmp.mod(p);
+        System.out.println("Server B: " + B);
+        JSONObject key = new JSONObject();
+        key.put("b", B);
+        out.println(key);
+        canSendB = false; // only once send value B
+    }
+
+    private void calculateS() {
+        // S = (long) (Math.pow(A, b)) % p;
+        BigInteger tmp = A.pow(b.intValue());
+        S = tmp.mod(p);
+        clientInfo.setSecret(S);
+        System.out.println("Server S: " + S);
+        canCalculateS = false; // only once calculate value S;
+    }
+
+    private void sendKeys() {
+        JSONObject keys = new JSONObject();
+        keys.put("p", p);
+        keys.put("g", g);
+        out.println(keys);
+        canSendB = true; // server can send B to client
+    }
+
+    private void setEncryption(JSONObject object) {
+        clientInfo.setEncryption(object.getString("encryption"));
+        clientsList.add(clientInfo);
+        canSendMessage = true;
+    }
+
+    private void sendMessages(JSONObject object) throws IOException {
+        // send received message to all clients
+        byte[] decodedBytes = Base64.decode(object.getString("msg"));
+        byte[] decryptedBytes;
+        String response;
+        if (clientInfo.getEncryption().equals("cezar")) {
+            decryptedBytes = Encryption.caesarCipher(new String(decodedBytes), S, false);
+            response = new String(decryptedBytes);
+        } else if (clientInfo.getEncryption().equals("xor")) {
+            decryptedBytes = Encryption.xor(new String(decodedBytes), S);
+            response = new String(decryptedBytes);
+        } else {
+            // none
+            response = new String(decodedBytes);
+        }
+
+        for (int i = 0; i < clientsList.size(); i++) {
+            Socket s = clientsList.get(i).getSocket();
+            out = new PrintWriter(s.getOutputStream(), true);
+            byte[] encryptMsg;
+            if (clientsList.get(i).getEncryption().equals("cezar")) {
+                encryptMsg = Encryption.caesarCipher(response, clientsList.get(i).getSecret(), true);
+            } else if (clientsList.get(i).getEncryption().equals("xor")) {
+                encryptMsg = Encryption.xor(response, clientsList.get(i).getSecret());
+            } else {
+                // none
+                encryptMsg = response.getBytes();
+            }
+            String encodeMsg = Base64.encode(encryptMsg);
+            JSONObject o = new JSONObject();
+            o.put("msg", encodeMsg);
+            o.put("from", object.get("from"));
+            out.println(o.toString());
+        }
+    }
+
+
 }

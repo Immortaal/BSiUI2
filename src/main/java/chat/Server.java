@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Created by Beata Kalis on 2016-10-12.
@@ -15,7 +13,6 @@ public class Server {
 
     private ServerSocket server;
     private final List<ClientInfo> clientsList = new ArrayList<ClientInfo>();
-
 
     private Server(int port) {
         try {

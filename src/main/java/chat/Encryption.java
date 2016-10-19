@@ -1,31 +1,33 @@
 package chat;
 
+import java.math.BigInteger;
+
 /**
- * Created by Beata on 2016-10-19.
+ * Created by Beata Kalis on 2016-10-19.
  */
-public class Encryption {
+class Encryption {
 
     private Encryption() {
         // utility class
     }
 
-    public static byte[] caesarCipher(String message, long key, boolean encode) {
-        int ch;
-        char[] array = message.toCharArray();
+    static byte[] caesarCipher(String message, BigInteger secret, boolean encode) {
+        long ch;
+        byte[] array = message.getBytes();
         byte[] result = new byte[array.length];
 
         for (int i = 0; i < array.length; i++) {
             ch = array[i];
             byte shiftedByte;
             if (encode) {
-                long shift = (ch + key);
+                long shift = (ch + secret.longValue());
                 if (shift > 127) {
                     shift -= 127;
                 }
                 shiftedByte = (byte) shift;
 
             } else {
-                long shift = (ch - key);
+                long shift = (ch - secret.longValue());
                 if (shift < 0) {
                     shift += 127;
                 }
@@ -37,12 +39,13 @@ public class Encryption {
         return result;
     }
 
-    public static String xor(String msg, long secret){
-        byte b = (byte) secret;
-        StringBuilder encrypted = new StringBuilder();
-        for(byte c : msg.getBytes()){
-            encrypted.append((char)(c ^ b & 0xFF));
+    static byte[] xor(String message, BigInteger secret) {
+        byte b = secret.byteValue();
+        byte[] array = message.getBytes();
+        byte[] result = new byte[array.length];
+        for (int i = 0; i < array.length; i++) {
+            result[i] = (byte) (array[i] ^ (b & 0xFF));
         }
-        return encrypted.toString();
+        return result;
     }
 }
