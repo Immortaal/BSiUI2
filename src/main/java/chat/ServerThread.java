@@ -14,6 +14,7 @@ import java.util.Random;
 
 /**
  * Created by Beata Kalis on 2016-10-19.
+ * class represents a channel between server and client
  */
 class ServerThread extends Thread {
     private final Socket socket;
@@ -30,6 +31,11 @@ class ServerThread extends Thread {
     private boolean canSendMessage = false;
     private PrintWriter out;
 
+    /**
+     *
+     * @param s client socket
+     * @param clientsList list of all clients; it is necessary to send a message to all connected clients
+     */
     ServerThread(Socket s, List<ClientInfo> clientsList) {
         this.socket = s;
         this.clientsList = clientsList;
@@ -39,6 +45,9 @@ class ServerThread extends Thread {
         this.b = new BigInteger(serverLocalSecret);
     }
 
+    /**
+     * method to wait for requests and responses
+     */
     public void run() {
         try {
             BufferedReader in = new BufferedReader(
@@ -89,8 +98,10 @@ class ServerThread extends Thread {
         }
     }
 
+    /**
+     * method to send value B to the client
+     */
     private void sendB() {
-        //  B = (long) (Math.pow(g, b)) % p;
         BigInteger tmp = g.pow(b.intValue());
         B = tmp.mod(p);
         System.out.println("Server B: " + B);
@@ -100,6 +111,9 @@ class ServerThread extends Thread {
         canSendB = false; // only once send value B
     }
 
+    /**
+     * method to calculate shared secret S
+     */
     private void calculateS() {
         // S = (long) (Math.pow(A, b)) % p;
         BigInteger tmp = A.pow(b.intValue());
@@ -109,6 +123,9 @@ class ServerThread extends Thread {
         canCalculateS = false; // only once calculate value S;
     }
 
+    /**
+     * method to send keys to the client (p and g)
+     */
     private void sendKeys() {
         JSONObject keys = new JSONObject();
         keys.put("p", p);
@@ -117,12 +134,22 @@ class ServerThread extends Thread {
         canSendB = true; // server can send B to client
     }
 
+    /**
+     * method to set client encryption
+     * @param object received JSON
+     */
     private void setEncryption(JSONObject object) {
         clientInfo.setEncryption(object.getString("encryption"));
         clientsList.add(clientInfo);
         canSendMessage = true;
     }
 
+    /**
+     * method to get a message, decode it from Base63, decipher it from suitable type of encryption and then
+     * cipher it for every client using right way of encryption, encode using Base64 and send as JSON to all clients
+     * @param object received JSON
+     * @throws IOException
+     */
     private void sendMessages(JSONObject object) throws IOException {
         // send received message to all clients
         byte[] decodedBytes = Base64.decode(object.getString("msg"));

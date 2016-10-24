@@ -7,6 +7,7 @@ import java.net.Socket;
 
 /**
  * Created by Beata Kalis on 2016-10-19.
+ * class represents Client and contains necessary information for server
  */
 @Data
 public class ClientInfo {

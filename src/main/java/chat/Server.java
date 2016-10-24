@@ -8,12 +8,17 @@ import java.util.List;
 
 /**
  * Created by Beata Kalis on 2016-10-12.
+ * class represents Server
  */
 public class Server {
 
     private ServerSocket server;
     private final List<ClientInfo> clientsList = new ArrayList<ClientInfo>();
 
+    /**
+     *
+     * @param port number of port on which server will be listening
+     */
     private Server(int port) {
         try {
             server = new ServerSocket(port);
@@ -26,6 +31,9 @@ public class Server {
         listen();
     }
 
+    /**
+     * method to accepts client connections and start new thread for every client
+     */
     private void listen() {
         while (true) {
             try {

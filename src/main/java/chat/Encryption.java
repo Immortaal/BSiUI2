@@ -4,6 +4,7 @@ import java.math.BigInteger;
 
 /**
  * Created by Beata Kalis on 2016-10-19.
+ * utility class contains two encryption methods: caesar Cipher and XOR
  */
 class Encryption {
 
@@ -11,6 +12,13 @@ class Encryption {
         // utility class
     }
 
+    /**
+     *
+     * @param message original message which will be ciphered
+     * @param secret shared secret S
+     * @param encode type of operation (encode or decode) - if true it is encode
+     * @return ciphered byte array
+     */
     static byte[] caesarCipher(String message, BigInteger secret, boolean encode) {
         long ch;
         byte[] array = message.getBytes();
@@ -39,6 +47,11 @@ class Encryption {
         return result;
     }
 
+    /**
+     * @param message original message which will be ciphered
+     * @param secret shared secret S, only the last byte will be used to cipher
+     * @return ciphered byte array
+     */
     static byte[] xor(String message, BigInteger secret) {
         byte b = secret.byteValue();
         byte[] array = message.getBytes();
