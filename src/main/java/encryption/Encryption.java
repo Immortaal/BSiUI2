@@ -1,4 +1,4 @@
-package chat;
+package encryption;
 
 import java.math.BigInteger;
 
@@ -6,7 +6,7 @@ import java.math.BigInteger;
  * Created by Beata Kalis on 2016-10-19.
  * utility class contains two encryption methods: caesar Cipher and XOR
  */
-class Encryption {
+public class Encryption {
 
     private Encryption() {
         // utility class
@@ -19,7 +19,7 @@ class Encryption {
      * @param encode type of operation (encode or decode) - if true it is encode
      * @return ciphered byte array
      */
-    static byte[] caesarCipher(String message, BigInteger secret, boolean encode) {
+    public static byte[] caesarCipher(String message, BigInteger secret, boolean encode) {
         long ch;
         byte[] array = message.getBytes();
         byte[] result = new byte[array.length];
@@ -52,7 +52,7 @@ class Encryption {
      * @param secret shared secret S, only the last byte will be used to cipher
      * @return ciphered byte array
      */
-    static byte[] xor(String message, BigInteger secret) {
+    public static byte[] xor(String message, BigInteger secret) {
         byte b = secret.byteValue();
         byte[] array = message.getBytes();
         byte[] result = new byte[array.length];
