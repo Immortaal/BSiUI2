@@ -18,7 +18,7 @@ import java.util.Random;
 
 /**
  * Created by Beata Kalis on 2016-10-12.
- * Class represents client, it is a thread connecting to the server
+ * Class represents client - thread
  */
 public class Client extends JFrame implements Runnable {
 
